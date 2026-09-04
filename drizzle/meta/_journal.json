@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1788469507632,
+      "tag": "0000_useful_marvel_zombies",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1788470427199,
+      "tag": "0001_plain_black_cat",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788472620140,
+      "tag": "0002_handy_nicolaos",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1788537600000,
+      "tag": "0003_pokemon_center_merch",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1788542400000,
+      "tag": "0004_inventory_costs",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1788552000000,
+      "tag": "0005_roi_history",
+      "breakpoints": true
+    }
+  ]
+}

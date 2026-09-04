@@ -1,0 +1,1 @@
+ALTER TABLE `inventory` ADD `item_type` text DEFAULT 'card' NOT NULL;
