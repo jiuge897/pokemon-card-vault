@@ -2,7 +2,7 @@
 
 [English](#english) | [简体中文](#简体中文)
 
-Current release: **v1.02** · [Release notes](CHANGELOG.md)
+Current release: **v1.03** · [Release notes](CHANGELOG.md)
 
 Live Site: [Pokémon Card Vault](https://pokemon-card-vault-daily.ianghost897.chatgpt.site)
 
@@ -15,6 +15,8 @@ A multilingual Pokémon TCG inventory and valuation dashboard built for ChatGPT 
 - Account-scoped inventory isolation
 - TCGplayer market-price lookup in USD
 - Single-card, sealed-product, and Pokémon Center merchandise tracking
+- Visual binder for held single cards and a display shelf for sealed products and merchandise
+- TCGplayer product images for cards and sealed products; official Pokémon Center images for merchandise
 - Quantity controls, search, manual price refresh, and CSV export
 - Adjustable valuation model: cards 50%, sealed products 80%, merchandise 100%
 - Purchase cost, optional sales-tax rate, profit, and ROI calculations
@@ -78,6 +80,8 @@ The app stores inventory and ROI history in your deployed D1 database. No user d
 - 按 ChatGPT 账户隔离库存数据
 - 查询以美元计价的 TCGplayer 市场价格
 - 支持单卡、密封产品和 Pokémon Center 周边
+- 持仓单卡可加入可视化卡册，密封产品与周边可放入展示架
+- 单卡和密封产品使用 TCGplayer 商品图，周边优先使用 Pokémon Center 官网图
 - 支持数量调整、库存搜索、手动更新价格和 CSV 导出
 - 按单卡 50%、密封产品 80%、周边 100% 计算折算价值
 - 支持购买成本、可选消费税率、收益和收益率计算
