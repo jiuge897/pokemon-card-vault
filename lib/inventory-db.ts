@@ -17,12 +17,14 @@ export type InventoryRow = {
   soldAt: string | null;
   soldPrice: number | null;
   saleNote: string | null;
+  displayLocation: 'vault' | 'binder' | 'display';
+  imageUrl: string | null;
   createdAt: string;
   updatedAt: string | null;
 };
 export async function listInventory(ownerId: string): Promise<InventoryRow[]> {
   const r = await env.DB.prepare(
-    `SELECT id,product_id AS productId,source_id AS sourceId,source_url AS sourceUrl,name,item_type AS itemType,printing,quantity,market_price AS marketPrice,unit_cost AS unitCost,taxable,tax_rate AS taxRate,cost_source AS costSource,status,sold_at AS soldAt,sold_price AS soldPrice,sale_note AS saleNote,COALESCE(NULLIF(created_at,''),updated_at,'') AS createdAt,updated_at AS updatedAt FROM inventory WHERE owner_id=? ORDER BY CASE status WHEN 'holding' THEN 0 ELSE 1 END,id DESC`,
+    `SELECT id,product_id AS productId,source_id AS sourceId,source_url AS sourceUrl,name,item_type AS itemType,printing,quantity,market_price AS marketPrice,unit_cost AS unitCost,taxable,tax_rate AS taxRate,cost_source AS costSource,status,sold_at AS soldAt,sold_price AS soldPrice,sale_note AS saleNote,display_location AS displayLocation,image_url AS imageUrl,COALESCE(NULLIF(created_at,''),updated_at,'') AS createdAt,updated_at AS updatedAt FROM inventory WHERE owner_id=? ORDER BY CASE status WHEN 'holding' THEN 0 ELSE 1 END,id DESC`,
   )
     .bind(ownerId)
     .all<InventoryRow>();
