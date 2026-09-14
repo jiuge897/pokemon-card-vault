@@ -24,6 +24,20 @@ function findProduct(value:JsonValue):Record<string,JsonValue>|null{
 }
 
 function text(value:JsonValue|undefined){return typeof value==='string'?value.trim():''}
+function imageFrom(product:Record<string,JsonValue>|null){
+  if(!product)return '';
+  const raw=product.image;
+  if(typeof raw==='string')return raw;
+  if(Array.isArray(raw)){
+    const first=raw.find((value)=>typeof value==='string');
+    return typeof first==='string'?first:'';
+  }
+  if(raw&&typeof raw==='object'){
+    const value=(raw as Record<string,JsonValue>).url||(raw as Record<string,JsonValue>).contentUrl;
+    return typeof value==='string'?value:'';
+  }
+  return '';
+}
 function priceFrom(product:Record<string,JsonValue>|null){
   if(!product)return null;
   const offers=Array.isArray(product.offers)?product.offers[0]:product.offers;
@@ -52,8 +66,9 @@ export async function POST(request:Request){
     }
     const sourceId=text(product?.sku).toUpperCase()||html.match(/(?:Original\s+)?SKU[^A-Z0-9]{0,20}([A-Z0-9][A-Z0-9-]{2,39})/i)?.[1]?.toUpperCase()||requestedSku;
     const name=text(product?.name)||html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)/i)?.[1]?.trim()||'';
+    const imageUrl=imageFrom(product)||html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)/i)?.[1]?.trim()||'';
     const fallbackPrice=Number(html.match(/["']price["']\s*:\s*["']?([0-9]+(?:\.[0-9]{1,2})?)/i)?.[1]||NaN);
     const officialPrice=priceFrom(product)??(Number.isFinite(fallbackPrice)&&fallbackPrice>0?fallbackPrice:null);
-    return Response.json({product:{sourceId,name,officialPrice,sourceUrl:response.url},complete:Boolean(name&&officialPrice)});
-  }catch{return Response.json({product:{sourceId:requestedSku,name:'',officialPrice:null,sourceUrl},complete:false})}
+    return Response.json({product:{sourceId,name,officialPrice,sourceUrl:response.url,imageUrl},complete:Boolean(name&&officialPrice)});
+  }catch{return Response.json({product:{sourceId:requestedSku,name:'',officialPrice:null,sourceUrl,imageUrl:''},complete:false})}
 }
