@@ -17,6 +17,9 @@ import {
   Save,
   Search,
   ShoppingBag,
+  Trophy,
+  TrendingDown,
+  TrendingUp,
   Trash2,
   WalletCards,
   X,
@@ -24,6 +27,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   NativeSelect,
   NativeSelectOption,
@@ -71,6 +82,10 @@ type CardItem = {
   taxable: number;
   taxRate: number;
   costSource: 'purchase' | 'pulled';
+  status: 'holding' | 'sold';
+  soldAt: string | null;
+  soldPrice: number | null;
+  saleNote: string | null;
   createdAt: string;
   updatedAt: string | null;
 };
@@ -84,6 +99,15 @@ type ApiData = {
   updated?: number;
   error?: string;
   errorCode?: string;
+};
+type LeaderboardEntry = {
+  nickname: string;
+  portfolioValue: number | null;
+  portfolioPercentileOnly: boolean;
+  roi: number | null;
+  missedGain: number;
+  avoidedLoss: number;
+  isCurrentUser: boolean;
 };
 const getProductId = (value: string) =>
   Number(value.match(/(?:product\/)?(\d{4,})/)?.[1] || NaN);
@@ -113,6 +137,7 @@ const errorKeys: Record<string, TranslationKey> = {
   INVALID_ADJUSTMENT: 'invalidAdjustment',
   NOT_FOUND: 'notFound',
   INVALID_ID: 'invalidId',
+  INVALID_SALE: 'invalidSale',
 };
 
 export default function InventoryClient({
@@ -139,6 +164,26 @@ export default function InventoryClient({
   const [loadingSets, setLoadingSets] = useState(false);
   const [savingCost, setSavingCost] = useState(false);
   const [roiHistory, setRoiHistory] = useState<RoiPoint[]>([]);
+  const [inventoryView, setInventoryView] = useState<
+    'all' | 'holding' | 'sold'
+  >('holding');
+  const [returnView, setReturnView] = useState<
+    'holding' | 'ytd' | 'inception'
+  >('holding');
+  const [selling, setSelling] = useState(false);
+  const [saleEditor, setSaleEditor] = useState<{
+    id: number;
+    name: string;
+    soldPrice: string;
+    soldAt: string;
+    saleNote: string;
+  } | null>(null);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [leaderboardProfile, setLeaderboardProfile] = useState({
+    nickname: user.displayName,
+    visibility: 'private' as 'private' | 'public',
+    hidePortfolioValue: false,
+  });
   const [costEditor, setCostEditor] = useState<{
     id: number;
     name: string;
@@ -213,6 +258,27 @@ export default function InventoryClient({
       setRoiHistory(data.history ?? []);
     } catch {}
   }, []);
+  const loadLeaderboard = useCallback(async () => {
+    try {
+      const response = await fetch('/api/leaderboard');
+      if (!response.ok) return;
+      const data = (await response.json()) as {
+        profile?: {
+          nickname: string;
+          visibility: 'private' | 'public';
+          hideValue: number;
+        } | null;
+        entries?: LeaderboardEntry[];
+      };
+      setLeaderboard(data.entries ?? []);
+      if (data.profile)
+        setLeaderboardProfile({
+          nickname: data.profile.nickname,
+          visibility: data.profile.visibility,
+          hidePortfolioValue: Boolean(data.profile.hideValue),
+        });
+    } catch {}
+  }, []);
   const refreshPrices = useCallback(
     async (force = false) => {
       setSyncing(true);
@@ -242,7 +308,8 @@ export default function InventoryClient({
   );
   useEffect(() => {
     void loadInventory().then(() => refreshPrices(false));
-  }, [loadInventory, refreshPrices]);
+    void loadLeaderboard();
+  }, [loadInventory, refreshPrices, loadLeaderboard]);
 
   async function lookupMerch() {
     if (!form.link.trim()) {
@@ -469,6 +536,48 @@ export default function InventoryClient({
       await loadRoiHistory();
     } else setMessage(t.notFound);
   }
+  async function saveSale() {
+    if (!saleEditor) return;
+    const soldPrice = Number(saleEditor.soldPrice);
+    if (!Number.isFinite(soldPrice) || soldPrice < 0 || !saleEditor.soldAt) {
+      setMessage(t.invalidSale);
+      return;
+    }
+    setSelling(true);
+    setMessage('');
+    try {
+      const response = await fetch('/api/inventory', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'sell', ...saleEditor, soldPrice }),
+      });
+      const data = (await response.json()) as ApiData;
+      if (!response.ok) throw new Error(apiError(data, 'saleFailed'));
+      if (data.items) setItems(data.items);
+      setSaleEditor(null);
+      setMessage(t.saleSaved);
+      await Promise.all([loadRoiHistory(), loadLeaderboard()]);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : t.saleFailed);
+    } finally {
+      setSelling(false);
+    }
+  }
+  async function saveLeaderboardSettings() {
+    if (!leaderboardProfile.nickname.trim()) {
+      setMessage(t.incomplete);
+      return;
+    }
+    const response = await fetch('/api/leaderboard', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(leaderboardProfile),
+    });
+    if (response.ok) {
+      setMessage(t.settingsSaved);
+      await loadLeaderboard();
+    } else setMessage(t.addFailed);
+  }
   async function changeQuantity(id: number, delta: 1 | -1) {
     const current = items.find((i) => i.id === id);
     if (!current || (delta < 0 && current.quantity <= 1)) return;
@@ -552,29 +661,33 @@ export default function InventoryClient({
   }
   const filtered = useMemo(() => {
     const n = query.trim().toLowerCase();
+    const byStatus = items.filter(
+      (item) => inventoryView === 'all' || item.status === inventoryView,
+    );
     return n
-      ? items.filter(
+      ? byStatus.filter(
           (i) =>
             i.name.toLowerCase().includes(n) ||
             String(i.productId || '').includes(n) ||
             (i.sourceId || '').toLowerCase().includes(n),
         )
-      : items;
-  }, [items, query]);
+      : byStatus;
+  }, [items, query, inventoryView]);
   const totals = useMemo(() => {
-    const market = items.reduce(
+    const holdings = items.filter((item) => item.status === 'holding');
+    const market = holdings.reduce(
       (s, i) => s + (i.marketPrice || 0) * i.quantity,
       0,
     );
-    const cash = items.reduce(
+    const cash = holdings.reduce(
       (s, i) => s + (i.marketPrice || 0) * i.quantity * cashRateFor(i.itemType),
       0,
     );
-    const cost = items.reduce(
+    const cost = holdings.reduce(
       (s, i) => s + (afterTaxUnitCost(i) || 0) * i.quantity,
       0,
     );
-    const costedItems = items.filter(
+    const costedItems = holdings.filter(
       (i) => (afterTaxUnitCost(i) || 0) > 0 && i.marketPrice != null,
     );
     const costedMarket = costedItems.reduce(
@@ -586,12 +699,51 @@ export default function InventoryClient({
       0,
     );
     return {
-      copies: items.reduce((s, i) => s + i.quantity, 0),
+      copies: holdings.reduce((s, i) => s + i.quantity, 0),
       market,
       cash,
       cost,
       costedMarket,
       costedCash,
+    };
+  }, [items]);
+  const returns = useMemo(() => {
+    const yearStart = `${new Date().getUTCFullYear()}-01-01`;
+    const calculate = (
+      list: CardItem[],
+      mode: 'holding' | 'ytd' | 'inception',
+    ) => {
+      let cost = 0,
+        value = 0;
+      for (const item of list) {
+        const basis = (afterTaxUnitCost(item) || 0) * item.quantity;
+        if (!basis) continue;
+        if (
+          mode === 'ytd' &&
+          item.createdAt &&
+          item.createdAt.slice(0, 10) < yearStart &&
+          !(
+            item.status === 'sold' &&
+            item.soldAt &&
+            item.soldAt >= yearStart
+          )
+        )
+          continue;
+        cost += basis;
+        value +=
+          item.status === 'sold'
+            ? item.soldPrice || 0
+            : (item.marketPrice || 0) * item.quantity;
+      }
+      return cost ? ((value - cost) / cost) * 100 : 0;
+    };
+    return {
+      holding: calculate(
+        items.filter((item) => item.status === 'holding'),
+        'holding',
+      ),
+      ytd: calculate(items, 'ytd'),
+      inception: calculate(items, 'inception'),
     };
   }, [items]);
   const latest = items
@@ -735,6 +887,42 @@ export default function InventoryClient({
               >
                 {usd.format(totals.market)}
               </p>
+              <div className="mt-4 inline-flex rounded-xl border border-white/10 bg-white/5 p-1">
+                {(['holding', 'ytd', 'inception'] as const).map((view) => (
+                  <button
+                    key={view}
+                    type="button"
+                    onClick={() => setReturnView(view)}
+                    className={`rounded-lg px-3 py-2 text-xs font-bold transition ${
+                      returnView === view
+                        ? 'bg-[#f4ca47] text-[#171b26]'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {view === 'holding'
+                      ? t.holdingReturn
+                      : view === 'ytd'
+                        ? t.ytdReturn
+                        : t.sinceInception}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-3 flex items-baseline gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  {t.portfolioReturn}
+                </span>
+                <strong
+                  dir="ltr"
+                  className={`text-3xl font-black ${
+                    returns[returnView] >= 0
+                      ? 'text-emerald-300'
+                      : 'text-red-300'
+                  }`}
+                >
+                  {returns[returnView] >= 0 ? '+' : ''}
+                  {percent.format(returns[returnView])}%
+                </strong>
+              </div>
               <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-slate-300">
                 <span>
                   {number.format(totals.copies)} {t.cards}
@@ -883,6 +1071,138 @@ export default function InventoryClient({
           ) : (
             <div className="grid h-44 place-items-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center text-sm text-slate-500">
               {t.roiHistoryEmpty}
+            </div>
+          )}
+        </section>
+        <section className="panel mb-7">
+          <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="eyebrow">{t.community}</p>
+              <h2 className="font-display text-xl font-bold text-slate-900">
+                {t.leaderboard}
+              </h2>
+              <p className="mt-1 text-xs text-slate-500">
+                {t.leaderboardHint}
+              </p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-[180px_auto_auto_auto] sm:items-center">
+              <Input
+                value={leaderboardProfile.nickname}
+                maxLength={30}
+                placeholder={t.nickname}
+                onChange={(e) =>
+                  setLeaderboardProfile({
+                    ...leaderboardProfile,
+                    nickname: e.target.value,
+                  })
+                }
+              />
+              <label className="flex items-center gap-2 text-xs font-semibold">
+                <Checkbox
+                  checked={leaderboardProfile.visibility === 'public'}
+                  onCheckedChange={(value) =>
+                    setLeaderboardProfile({
+                      ...leaderboardProfile,
+                      visibility: value === true ? 'public' : 'private',
+                    })
+                  }
+                />
+                {t.joinLeaderboard}
+              </label>
+              <label className="flex items-center gap-2 text-xs font-semibold">
+                <Checkbox
+                  checked={leaderboardProfile.hidePortfolioValue}
+                  onCheckedChange={(value) =>
+                    setLeaderboardProfile({
+                      ...leaderboardProfile,
+                      hidePortfolioValue: value === true,
+                    })
+                  }
+                />
+                {t.hidePortfolioValue}
+              </label>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={saveLeaderboardSettings}
+              >
+                {t.saveSettings}
+              </Button>
+            </div>
+          </div>
+          {leaderboard.length ? (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              {[
+                {
+                  key: 'portfolioValue' as const,
+                  label: t.mostAssets,
+                  icon: Trophy,
+                  format: (value: number) => usd.format(value),
+                },
+                {
+                  key: 'roi' as const,
+                  label: t.bestReturn,
+                  icon: TrendingUp,
+                  format: (value: number) => `${percent.format(value)}%`,
+                },
+                {
+                  key: 'missedGain' as const,
+                  label: t.missedGain,
+                  icon: TrendingUp,
+                  format: (value: number) => usd.format(value),
+                },
+                {
+                  key: 'avoidedLoss' as const,
+                  label: t.avoidedLoss,
+                  icon: TrendingDown,
+                  format: (value: number) => usd.format(value),
+                },
+              ].map((board) => {
+                const ranked = [...leaderboard]
+                  .filter((entry) => entry[board.key] != null)
+                  .sort(
+                    (first, second) =>
+                      Number(second[board.key]) - Number(first[board.key]),
+                  )
+                  .slice(0, 5);
+                return (
+                  <div
+                    key={board.key}
+                    className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                  >
+                    <div className="mb-3 flex items-center gap-2 font-bold text-slate-800">
+                      <board.icon className="size-4 text-amber-600" />
+                      {board.label}
+                    </div>
+                    <ol className="space-y-2">
+                      {ranked.map((entry, index) => (
+                        <li
+                          key={`${board.key}-${entry.nickname}`}
+                          className={`flex items-center justify-between gap-2 text-sm ${
+                            entry.isCurrentUser
+                              ? 'font-bold text-amber-800'
+                              : 'text-slate-600'
+                          }`}
+                        >
+                          <span className="truncate">
+                            {index + 1}. {entry.nickname}
+                          </span>
+                          <span dir="ltr" className="tabular-nums">
+                            {board.key === 'portfolioValue' &&
+                            entry.portfolioPercentileOnly
+                              ? t.privateEntry
+                              : board.format(Number(entry[board.key]))}
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
+              {t.noLeaderboardEntries}
             </div>
           )}
         </section>
@@ -1218,6 +1538,26 @@ export default function InventoryClient({
               <div>
                 <p className="eyebrow">{t.inventoryEyebrow}</p>
                 <h2>{t.inventoryTitle}</h2>
+                <div className="mt-3 inline-flex rounded-xl bg-slate-100 p-1">
+                  {(['holding', 'sold', 'all'] as const).map((view) => (
+                    <button
+                      key={view}
+                      type="button"
+                      onClick={() => setInventoryView(view)}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
+                        inventoryView === view
+                          ? 'bg-white text-slate-900 shadow-sm'
+                          : 'text-slate-500'
+                      }`}
+                    >
+                      {view === 'holding'
+                        ? t.holdings
+                        : view === 'sold'
+                          ? t.sold
+                          : t.all}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="flex w-full flex-1 items-center justify-end gap-2 md:w-auto">
                 <div className="relative w-full max-w-64">
@@ -1403,13 +1743,15 @@ export default function InventoryClient({
                   ) : (
                     filtered.map((item) => {
                       const isMerch = item.itemType === 'merch',
+                        isSold = item.status === 'sold',
                         total = (item.marketPrice || 0) * item.quantity,
                         cashRate = cashRateFor(item.itemType),
                         adjustedTotal = total * cashRate,
                         taxedUnitCost = afterTaxUnitCost(item),
                         costTotal = (taxedUnitCost || 0) * item.quantity,
                         hasRoi = taxedUnitCost != null && costTotal > 0,
-                        marketProfit = total - costTotal,
+                        outcome = isSold ? item.soldPrice || 0 : total,
+                        marketProfit = outcome - costTotal,
                         adjustedProfit = adjustedTotal - costTotal,
                         href = isMerch
                           ? item.sourceUrl ||
@@ -1440,6 +1782,15 @@ export default function InventoryClient({
                                   {item.name}
                                   <ExternalLink className="size-3 opacity-50" />
                                 </a>
+                                <span
+                                  className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                    isSold
+                                      ? 'bg-violet-100 text-violet-700'
+                                      : 'bg-emerald-100 text-emerald-700'
+                                  }`}
+                                >
+                                  {isSold ? t.sold : t.holdings}
+                                </span>
                                 <p
                                   dir="ltr"
                                   className="mt-1 font-mono text-[11px] text-slate-400"
@@ -1475,7 +1826,7 @@ export default function InventoryClient({
                                 }
                                 variant="ghost"
                                 size="icon-xs"
-                                disabled={item.quantity <= 1}
+                                disabled={isSold || item.quantity <= 1}
                                 onClick={() => changeQuantity(item.id, -1)}
                               >
                                 <Minus />
@@ -1489,6 +1840,7 @@ export default function InventoryClient({
                                 title={t.increaseOne}
                                 variant="ghost"
                                 size="icon-xs"
+                                disabled={isSold}
                                 onClick={() => changeQuantity(item.id, 1)}
                               >
                                 <Plus />
@@ -1499,7 +1851,16 @@ export default function InventoryClient({
                             dir="ltr"
                             className="text-end tabular-nums"
                           >
-                            {item.marketPrice == null ? (
+                            {isSold ? (
+                              <>
+                                <span className="block font-bold text-violet-700">
+                                  {usd.format(item.soldPrice || 0)}
+                                </span>
+                                <span className="text-[10px] text-slate-400">
+                                  {t.soldPriceLabel} · {item.soldAt}
+                                </span>
+                              </>
+                            ) : item.marketPrice == null ? (
                               <span className="text-slate-400">
                                 {t.pendingPrice}
                               </span>
@@ -1520,7 +1881,7 @@ export default function InventoryClient({
                             dir="ltr"
                             className="text-end font-semibold tabular-nums"
                           >
-                            {usd.format(total)}
+                            {usd.format(isSold ? item.soldPrice || 0 : total)}
                           </TableCell>
                           <TableCell
                             dir="ltr"
@@ -1584,13 +1945,15 @@ export default function InventoryClient({
                             dir="ltr"
                             className="min-w-40 text-end tabular-nums"
                           >
-                            {isMerch || !hasRoi || item.marketPrice == null ? (
+                            {isMerch ||
+                            !hasRoi ||
+                            (!isSold && item.marketPrice == null) ? (
                               <span className="text-slate-300">—</span>
                             ) : (
                               <div className="space-y-2 text-sm">
                                 <div>
                                   <span className="me-2 text-slate-400">
-                                    {t.marketShort}
+                                    {isSold ? t.realizedProfit : t.marketShort}
                                   </span>
                                   <span
                                     className={
@@ -1624,10 +1987,54 @@ export default function InventoryClient({
                                     %
                                   </span>
                                 </div>
+                                {isSold && item.marketPrice != null && (
+                                  <div
+                                    className={`rounded-lg px-2 py-1.5 text-xs font-bold ${
+                                      total > (item.soldPrice || 0)
+                                        ? 'bg-red-50 text-red-600'
+                                        : 'bg-emerald-50 text-emerald-700'
+                                    }`}
+                                  >
+                                    {total > (item.soldPrice || 0)
+                                      ? tr('leftOnTable', {
+                                          amount: usd.format(
+                                            total - (item.soldPrice || 0),
+                                          ),
+                                        })
+                                      : tr('niceExit', {
+                                          amount: usd.format(
+                                            (item.soldPrice || 0) - total,
+                                          ),
+                                        })}
+                                  </div>
+                                )}
                               </div>
                             )}
                           </TableCell>
                           <TableCell>
+                            <div className="flex items-center justify-end gap-1">
+                              {!isSold && (
+                                <Button
+                                  type="button"
+                                  title={t.sell}
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-slate-400 opacity-0 group-hover:opacity-100 hover:text-emerald-600 focus:opacity-100"
+                                  onClick={() =>
+                                    setSaleEditor({
+                                      id: item.id,
+                                      name: item.name,
+                                      soldPrice: '',
+                                      soldAt: new Date()
+                                        .toISOString()
+                                        .slice(0, 10),
+                                      saleNote: '',
+                                    })
+                                  }
+                                >
+                                  <TrendingUp />
+                                </Button>
+                              )}
                             <Button
                               type="button"
                               aria-label={tr('deleteItem', { name: item.name })}
@@ -1639,6 +2046,7 @@ export default function InventoryClient({
                             >
                               <Trash2 />
                             </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
@@ -1660,6 +2068,81 @@ export default function InventoryClient({
           </section>
         </section>
       </div>
+      <Dialog
+        open={Boolean(saleEditor)}
+        onOpenChange={(open) => {
+          if (!open) setSaleEditor(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {saleEditor
+                ? tr('sellItem', { name: saleEditor.name })
+                : t.sell}
+            </DialogTitle>
+            <DialogDescription>{t.sellHint}</DialogDescription>
+          </DialogHeader>
+          {saleEditor && (
+            <div className="grid gap-4 py-2">
+              <label className="field-label">
+                {t.sellPrice}
+                <Input
+                  dir="ltr"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="field-input"
+                  value={saleEditor.soldPrice}
+                  onChange={(event) =>
+                    setSaleEditor({
+                      ...saleEditor,
+                      soldPrice: event.target.value,
+                    })
+                  }
+                />
+              </label>
+              <label className="field-label">
+                {t.sellDate}
+                <Input
+                  dir="ltr"
+                  type="date"
+                  className="field-input"
+                  value={saleEditor.soldAt}
+                  onChange={(event) =>
+                    setSaleEditor({
+                      ...saleEditor,
+                      soldAt: event.target.value,
+                    })
+                  }
+                />
+              </label>
+              <label className="field-label">
+                {t.saleNote}
+                <Input
+                  value={saleEditor.saleNote}
+                  className="field-input"
+                  onChange={(event) =>
+                    setSaleEditor({
+                      ...saleEditor,
+                      saleNote: event.target.value,
+                    })
+                  }
+                />
+              </label>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSaleEditor(null)}>
+              {t.cancel}
+            </Button>
+            <Button disabled={selling} onClick={saveSale}>
+              {selling && <LoaderCircle className="animate-spin" />}
+              {t.confirmSale}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
