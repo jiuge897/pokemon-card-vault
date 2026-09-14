@@ -13,6 +13,8 @@ export const inventory = sqliteTable(
     id: integer('id').primaryKey({ autoIncrement: true }),
     ownerId: text('owner_id').notNull(),
     productId: integer('product_id'),
+    sourceId: text('source_id'),
+    sourceUrl: text('source_url'),
     name: text('name').notNull(),
     itemType: text('item_type').notNull().default('card'),
     printing: text('printing').notNull(),
@@ -26,6 +28,8 @@ export const inventory = sqliteTable(
     soldAt: text('sold_at'),
     soldPrice: real('sold_price'),
     saleNote: text('sale_note'),
+    displayLocation: text('display_location').notNull().default('vault'),
+    imageUrl: text('image_url'),
     createdAt: text('created_at').notNull().default(''),
     updatedAt: text('updated_at'),
   },
@@ -37,5 +41,9 @@ export const inventory = sqliteTable(
     ),
     index('idx_inventory_owner_id').on(table.ownerId),
     index('idx_inventory_owner_status').on(table.ownerId, table.status),
+    index('idx_inventory_owner_display').on(
+      table.ownerId,
+      table.displayLocation,
+    ),
   ],
 );
