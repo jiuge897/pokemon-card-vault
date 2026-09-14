@@ -154,6 +154,28 @@ export async function PATCH(request: Request) {
       await recordDailyRoiSnapshots(user.id, items);
       return Response.json({ items });
     }
+    if (b.action === 'sell') {
+      const soldPrice = Number(b.soldPrice),
+        soldAt = textValue(b.soldAt).trim(),
+        saleNote = textValue(b.saleNote).trim().slice(0, 300);
+      if (
+        !Number.isFinite(soldPrice) ||
+        soldPrice < 0 ||
+        soldPrice > 10000000 ||
+        !/^\\d{4}-\\d{2}-\\d{2}$/.test(soldAt)
+      )
+        return Response.json({ errorCode: 'INVALID_SALE' }, { status: 400 });
+      const result = await env.DB.prepare(
+        `UPDATE inventory SET status='sold',sold_at=?,sold_price=?,sale_note=? WHERE id=? AND owner_id=? AND status='holding'`,
+      )
+        .bind(soldAt, soldPrice, saleNote || null, id, user.id)
+        .run();
+      if (!result.meta.changes)
+        return Response.json({ errorCode: 'NOT_FOUND' }, { status: 404 });
+      const items = await listInventory(user.id);
+      await recordDailyRoiSnapshots(user.id, items);
+      return Response.json({ items });
+    }
     const delta = Number(b.delta);
     if (![1, -1].includes(delta))
       return Response.json(
@@ -161,7 +183,7 @@ export async function PATCH(request: Request) {
         { status: 400 },
       );
     const result = await env.DB.prepare(
-      'UPDATE inventory SET quantity=MAX(1,quantity+?) WHERE id=? AND owner_id=?',
+      "UPDATE inventory SET quantity=MAX(1,quantity+?) WHERE id=? AND owner_id=? AND status='holding'",
     )
       .bind(delta, id, user.id)
       .run();
