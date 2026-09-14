@@ -1301,3 +1301,137 @@ export function formatText(
     String(values[key] ?? `{${key}}`),
   );
 }
+
+
+export const collectionTranslations: Record<
+  Locale,
+  {
+    collectionEyebrow: string;
+    collectionTitle: string;
+    binder: string;
+    displayShelf: string;
+    binderHint: string;
+    displayHint: string;
+    collectionEmpty: string;
+    binderEmptyHint: string;
+    displayEmptyHint: string;
+    addToBinder: string;
+    addToDisplay: string;
+    removeFromCollection: string;
+    collectionSaved: string;
+    collectionFailed: string;
+  }
+> = {
+  'zh-CN': {
+    collectionEyebrow: 'COLLECTION DISPLAY',
+    collectionTitle: '卡册与展示架',
+    binder: '卡册',
+    displayShelf: '展示架',
+    binderHint: '把持仓中的单卡放入卡册，用大图浏览自己的收藏。',
+    displayHint: '密封产品与周边可以放上展示架，图片分别来自 TCGplayer 与 Pokémon Center 官网。',
+    collectionEmpty: '这里还没有藏品',
+    binderEmptyHint: '在库存单卡旁点击卡册图标即可加入。',
+    displayEmptyHint: '在密封产品或周边旁点击展示架图标即可加入。',
+    addToBinder: '加入卡册',
+    addToDisplay: '放上展示架',
+    removeFromCollection: '移出展示',
+    collectionSaved: '收藏展示已更新。',
+    collectionFailed: '无法更新收藏展示，请稍后重试。',
+  },
+  'zh-TW': {
+    collectionEyebrow: 'COLLECTION DISPLAY',
+    collectionTitle: '卡冊與展示架',
+    binder: '卡冊',
+    displayShelf: '展示架',
+    binderHint: '把持有中的單卡放入卡冊，以大圖瀏覽自己的收藏。',
+    displayHint: '密封產品與周邊可放上展示架，圖片分別來自 TCGplayer 與 Pokémon Center 官網。',
+    collectionEmpty: '這裡還沒有藏品',
+    binderEmptyHint: '在庫存單卡旁點擊卡冊圖示即可加入。',
+    displayEmptyHint: '在密封產品或周邊旁點擊展示架圖示即可加入。',
+    addToBinder: '加入卡冊',
+    addToDisplay: '放上展示架',
+    removeFromCollection: '移出展示',
+    collectionSaved: '收藏展示已更新。',
+    collectionFailed: '無法更新收藏展示，請稍後重試。',
+  },
+  en: {
+    collectionEyebrow: 'COLLECTION DISPLAY',
+    collectionTitle: 'Binder & Display Shelf',
+    binder: 'Binder',
+    displayShelf: 'Display shelf',
+    binderHint: 'Add held single cards to your binder and browse them as a visual collection.',
+    displayHint: 'Display sealed products and merchandise with images from TCGplayer and Pokémon Center.',
+    collectionEmpty: 'Nothing displayed yet',
+    binderEmptyHint: 'Use the binder button beside a held single card.',
+    displayEmptyHint: 'Use the display button beside a held sealed product or merchandise item.',
+    addToBinder: 'Add to binder',
+    addToDisplay: 'Add to display',
+    removeFromCollection: 'Remove from display',
+    collectionSaved: 'Collection display updated.',
+    collectionFailed: 'Could not update the collection display. Please try again.',
+  },
+  ja: {
+    collectionEyebrow: 'COLLECTION DISPLAY',
+    collectionTitle: 'バインダーとディスプレイ',
+    binder: 'バインダー',
+    displayShelf: 'ディスプレイ',
+    binderHint: '保有中のシングルカードをバインダーに追加し、画像でコレクションを閲覧できます。',
+    displayHint: '未開封商品とグッズを、TCGplayer と Pokémon Center の画像で展示できます。',
+    collectionEmpty: 'まだコレクションがありません',
+    binderEmptyHint: '保有中のシングルカード横のバインダーボタンから追加できます。',
+    displayEmptyHint: '未開封商品またはグッズ横の展示ボタンから追加できます。',
+    addToBinder: 'バインダーに追加',
+    addToDisplay: '展示に追加',
+    removeFromCollection: '展示から外す',
+    collectionSaved: 'コレクション表示を更新しました。',
+    collectionFailed: 'コレクション表示を更新できませんでした。',
+  },
+  fr: {
+    collectionEyebrow: 'COLLECTION DISPLAY',
+    collectionTitle: 'Classeur et vitrine',
+    binder: 'Classeur',
+    displayShelf: 'Vitrine',
+    binderHint: 'Ajoutez vos cartes à l’unité détenues au classeur pour parcourir votre collection en images.',
+    displayHint: 'Exposez les produits scellés et dérivés avec les images de TCGplayer et Pokémon Center.',
+    collectionEmpty: 'Aucun objet exposé',
+    binderEmptyHint: 'Utilisez le bouton classeur à côté d’une carte détenue.',
+    displayEmptyHint: 'Utilisez le bouton vitrine à côté d’un produit scellé ou dérivé détenu.',
+    addToBinder: 'Ajouter au classeur',
+    addToDisplay: 'Ajouter à la vitrine',
+    removeFromCollection: 'Retirer de l’exposition',
+    collectionSaved: 'Présentation de la collection mise à jour.',
+    collectionFailed: 'Impossible de mettre à jour la présentation.',
+  },
+  es: {
+    collectionEyebrow: 'COLLECTION DISPLAY',
+    collectionTitle: 'Álbum y expositor',
+    binder: 'Álbum',
+    displayShelf: 'Expositor',
+    binderHint: 'Añade cartas individuales en cartera al álbum y explora tu colección con imágenes.',
+    displayHint: 'Expón productos sellados y artículos con imágenes de TCGplayer y Pokémon Center.',
+    collectionEmpty: 'Todavía no hay objetos expuestos',
+    binderEmptyHint: 'Usa el botón de álbum junto a una carta individual en cartera.',
+    displayEmptyHint: 'Usa el botón de expositor junto a un producto sellado o artículo en cartera.',
+    addToBinder: 'Añadir al álbum',
+    addToDisplay: 'Añadir al expositor',
+    removeFromCollection: 'Quitar de la exposición',
+    collectionSaved: 'Exposición de la colección actualizada.',
+    collectionFailed: 'No se pudo actualizar la exposición.',
+  },
+  ar: {
+    collectionEyebrow: 'COLLECTION DISPLAY',
+    collectionTitle: 'الألبوم ورف العرض',
+    binder: 'الألبوم',
+    displayShelf: 'رف العرض',
+    binderHint: 'أضف البطاقات المفردة المحتفظ بها إلى الألبوم وتصفح مجموعتك بالصور.',
+    displayHint: 'اعرض المنتجات المختومة والسلع بصور من TCGplayer وPokémon Center.',
+    collectionEmpty: 'لا توجد مقتنيات معروضة بعد',
+    binderEmptyHint: 'استخدم زر الألبوم بجوار بطاقة مفردة محتفظ بها.',
+    displayEmptyHint: 'استخدم زر العرض بجوار منتج مختوم أو سلعة محتفظ بها.',
+    addToBinder: 'إضافة إلى الألبوم',
+    addToDisplay: 'إضافة إلى العرض',
+    removeFromCollection: 'إزالة من العرض',
+    collectionSaved: 'تم تحديث عرض المجموعة.',
+    collectionFailed: 'تعذر تحديث عرض المجموعة. حاول مرة أخرى.',
+  },
+};
