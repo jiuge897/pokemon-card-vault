@@ -13,7 +13,13 @@ export async function GET() {
   if (!user)
     return Response.json({ errorCode: 'AUTH_REQUIRED' }, { status: 401 });
   const result = await env.DB.prepare(
-    `SELECT snapshot_date AS date,SUM(quantity*market_price) AS marketValue,SUM(quantity*market_price*cash_rate) AS adjustedValue,SUM(quantity*unit_cost*(1+CASE WHEN taxable=1 THEN tax_rate/100.0 ELSE 0 END)) AS cost FROM roi_history WHERE owner_id=? AND market_price IS NOT NULL AND unit_cost IS NOT NULL AND unit_cost>0 GROUP BY snapshot_date ORDER BY snapshot_date ASC LIMIT 730`,
+    `SELECT h.snapshot_date AS date,
+      SUM(CASE WHEN i.status='sold' AND h.snapshot_date>=i.sold_at THEN COALESCE(i.sold_price,0) ELSE h.quantity*h.market_price END) AS marketValue,
+      SUM(CASE WHEN i.status='sold' AND h.snapshot_date>=i.sold_at THEN COALESCE(i.sold_price,0) ELSE h.quantity*h.market_price*h.cash_rate END) AS adjustedValue,
+      SUM(h.quantity*h.unit_cost*(1+CASE WHEN h.taxable=1 THEN h.tax_rate/100.0 ELSE 0 END)) AS cost
+    FROM roi_history h JOIN inventory i ON i.id=h.inventory_id AND i.owner_id=h.owner_id
+    WHERE h.owner_id=? AND h.market_price IS NOT NULL AND h.unit_cost IS NOT NULL AND h.unit_cost>0
+    GROUP BY h.snapshot_date ORDER BY h.snapshot_date ASC LIMIT 730`,
   )
     .bind(user.id)
     .all<AggregateRow>();
