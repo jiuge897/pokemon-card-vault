@@ -65,6 +65,7 @@ import {
   Locale,
   TranslationKey,
   translations,
+  collectionTranslations,
 } from './i18n';
 
 type ItemType = 'card' | 'sealed' | 'merch';
@@ -86,6 +87,8 @@ type CardItem = {
   soldAt: string | null;
   soldPrice: number | null;
   saleNote: string | null;
+  displayLocation: 'vault' | 'binder' | 'display';
+  imageUrl: string | null;
   createdAt: string;
   updatedAt: string | null;
 };
@@ -164,6 +167,7 @@ export default function InventoryClient({
   const [loadingSets, setLoadingSets] = useState(false);
   const [savingCost, setSavingCost] = useState(false);
   const [roiHistory, setRoiHistory] = useState<RoiPoint[]>([]);
+  const [collectionView, setCollectionView] = useState<'binder' | 'display'>('binder');
   const [inventoryView, setInventoryView] = useState<
     'all' | 'holding' | 'sold'
   >('holding');
@@ -196,6 +200,7 @@ export default function InventoryClient({
   const [form, setForm] = useState({
     link: '',
     sourceId: '',
+    imageUrl: '',
     name: '',
     itemType: 'card' as ItemType,
     printing: 'Foil',
@@ -207,6 +212,7 @@ export default function InventoryClient({
     quantity: '1',
   });
   const t = translations[locale];
+  const ct = collectionTranslations[locale];
   const rtl = locale === 'ar';
   const dir = rtl ? 'rtl' : 'ltr';
   const usd = useMemo(
@@ -330,6 +336,7 @@ export default function InventoryClient({
           name: string;
           officialPrice: number | null;
           sourceUrl: string;
+          imageUrl: string;
         };
         complete?: boolean;
         errorCode?: string;
@@ -345,6 +352,7 @@ export default function InventoryClient({
         sourceId: d.product!.sourceId,
         link: d.product!.sourceUrl,
         name: d.product!.name || current.name,
+        imageUrl: d.product!.imageUrl || current.imageUrl,
         officialPrice: d.product!.officialPrice
           ? String(d.product!.officialPrice)
           : current.officialPrice,
@@ -484,6 +492,7 @@ export default function InventoryClient({
                 name: form.name.trim(),
                 itemType: 'merch',
                 officialPrice: Number(form.officialPrice),
+                imageUrl: form.imageUrl,
                 quantity: Math.max(1, Number(form.quantity) || 1),
               }
             : {
@@ -509,6 +518,7 @@ export default function InventoryClient({
       setForm({
         link: '',
         sourceId: '',
+        imageUrl: '',
         name: '',
         itemType: 'card',
         printing: 'Foil',
@@ -577,6 +587,31 @@ export default function InventoryClient({
       setMessage(t.settingsSaved);
       await loadLeaderboard();
     } else setMessage(t.addFailed);
+  }
+  async function updateDisplayLocation(
+    item: CardItem,
+    displayLocation: 'vault' | 'binder' | 'display',
+  ) {
+    setMessage('');
+    try {
+      const response = await fetch('/api/inventory', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          action: 'display',
+          id: item.id,
+          productId: item.productId,
+          imageUrl: item.imageUrl,
+          displayLocation,
+        }),
+      });
+      const data = (await response.json()) as ApiData;
+      if (!response.ok) throw new Error(apiError(data, 'addFailed'));
+      if (data.items) setItems(data.items);
+      setMessage(ct.collectionSaved);
+    } catch {
+      setMessage(ct.collectionFailed);
+    }
   }
   async function changeQuantity(id: number, delta: 1 | -1) {
     const current = items.find((i) => i.id === id);
@@ -746,6 +781,14 @@ export default function InventoryClient({
       inception: calculate(items, 'inception'),
     };
   }, [items]);
+  const collectionItems = useMemo(
+    () =>
+      items.filter(
+        (item) =>
+          item.status === 'holding' && item.displayLocation === collectionView,
+      ),
+    [items, collectionView],
+  );
   const latest = items
     .map((i) => i.updatedAt)
     .filter(Boolean)
@@ -1203,6 +1246,117 @@ export default function InventoryClient({
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
               {t.noLeaderboardEntries}
+            </div>
+          )}
+        </section>
+        <section className="panel mb-7 overflow-hidden">
+          <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="eyebrow">{ct.collectionEyebrow}</p>
+              <h2 className="font-display text-xl font-bold text-slate-900">
+                {ct.collectionTitle}
+              </h2>
+              <p className="mt-1 max-w-2xl text-xs text-slate-500">
+                {collectionView === 'binder' ? ct.binderHint : ct.displayHint}
+              </p>
+            </div>
+            <div className="inline-flex rounded-xl bg-slate-100 p-1">
+              {(['binder', 'display'] as const).map((view) => (
+                <button
+                  key={view}
+                  type="button"
+                  onClick={() => setCollectionView(view)}
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold ${
+                    collectionView === view
+                      ? 'bg-white text-slate-900 shadow-sm'
+                      : 'text-slate-500'
+                  }`}
+                >
+                  {view === 'binder' ? <Layers3 className="size-4" /> : <Box className="size-4" />}
+                  {view === 'binder' ? ct.binder : ct.displayShelf}
+                </button>
+              ))}
+            </div>
+          </div>
+          {collectionItems.length ? (
+            <div
+              className={
+                collectionView === 'binder'
+                  ? 'grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'
+                  : 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+              }
+            >
+              {collectionItems.map((item) => {
+                const imageUrl =
+                  item.imageUrl ||
+                  (item.productId
+                    ? `https://tcgplayer-cdn.tcgplayer.com/product/${item.productId}_400w.jpg`
+                    : '');
+                return (
+                  <article
+                    key={item.id}
+                    className={`group relative overflow-hidden border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${
+                      collectionView === 'binder'
+                        ? 'rounded-xl p-2'
+                        : 'rounded-2xl p-3'
+                    }`}
+                  >
+                    <div
+                      className={`grid place-items-center overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100 ${
+                        collectionView === 'binder'
+                          ? 'aspect-[2.5/3.5] rounded-lg'
+                          : 'aspect-square rounded-xl'
+                      }`}
+                    >
+                      {imageUrl ? (
+                        <img
+                          src={imageUrl}
+                          alt={item.name}
+                          loading="lazy"
+                          className="h-full w-full object-contain p-1"
+                        />
+                      ) : (
+                        <ShoppingBag className="size-10 text-slate-300" />
+                      )}
+                    </div>
+                    <div className="mt-2 min-w-0">
+                      <p className="truncate text-sm font-bold text-slate-800" title={item.name}>
+                        {item.name}
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-slate-400">
+                        {item.quantity > 1 ? `×${number.format(item.quantity)} · ` : ''}
+                        {item.itemType === 'merch'
+                          ? 'Pokémon Center'
+                          : 'TCGplayer'}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-3 h-8 w-full rounded-lg text-xs"
+                      onClick={() => updateDisplayLocation(item, 'vault')}
+                    >
+                      <X className="size-3.5" />
+                      {ct.removeFromCollection}
+                    </Button>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="grid min-h-44 place-items-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center">
+              <div>
+                {collectionView === 'binder' ? (
+                  <Layers3 className="mx-auto mb-3 size-9 text-slate-300" />
+                ) : (
+                  <Box className="mx-auto mb-3 size-9 text-slate-300" />
+                )}
+                <p className="font-semibold text-slate-600">{ct.collectionEmpty}</p>
+                <p className="mt-1 text-xs text-slate-400">
+                  {collectionView === 'binder' ? ct.binderEmptyHint : ct.displayEmptyHint}
+                </p>
+              </div>
             </div>
           )}
         </section>
@@ -1761,15 +1915,19 @@ export default function InventoryClient({
                         <TableRow key={item.id} className="group">
                           <TableCell className="ps-4">
                             <div className="flex items-center gap-3">
-                              {isMerch ? (
+                              {isMerch && !item.imageUrl ? (
                                 <span className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-rose-50 text-rose-600">
                                   <ShoppingBag className="size-6" />
                                 </span>
                               ) : (
                                 <img
-                                  className={`rounded-md object-contain shadow-sm ${item.itemType === 'sealed' ? 'h-14 w-14 bg-white' : 'h-14 w-10'}`}
-                                  src={`https://tcgplayer-cdn.tcgplayer.com/product/${item.productId}_200w.jpg`}
+                                  className={`rounded-md object-contain shadow-sm ${item.itemType === 'card' ? 'h-14 w-10' : 'h-14 w-14 bg-white'}`}
+                                  src={
+                                    item.imageUrl ||
+                                    `https://tcgplayer-cdn.tcgplayer.com/product/${item.productId}_200w.jpg`
+                                  }
                                   alt=""
+                                  loading="lazy"
                                 />
                               )}
                               <div dir="auto">
@@ -2013,6 +2171,39 @@ export default function InventoryClient({
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center justify-end gap-1">
+                              {!isSold && (
+                                <Button
+                                  type="button"
+                                  title={
+                                    item.displayLocation ===
+                                    (item.itemType === 'card' ? 'binder' : 'display')
+                                      ? ct.removeFromCollection
+                                      : item.itemType === 'card'
+                                        ? ct.addToBinder
+                                        : ct.addToDisplay
+                                  }
+                                  variant="ghost"
+                                  size="icon"
+                                  className={`opacity-0 group-hover:opacity-100 focus:opacity-100 ${
+                                    item.displayLocation !== 'vault'
+                                      ? 'text-amber-600'
+                                      : 'text-slate-400 hover:text-amber-600'
+                                  }`}
+                                  onClick={() =>
+                                    updateDisplayLocation(
+                                      item,
+                                      item.displayLocation ===
+                                        (item.itemType === 'card' ? 'binder' : 'display')
+                                        ? 'vault'
+                                        : item.itemType === 'card'
+                                          ? 'binder'
+                                          : 'display',
+                                    )
+                                  }
+                                >
+                                  {item.itemType === 'card' ? <Layers3 /> : <Box />}
+                                </Button>
+                              )}
                               {!isSold && (
                                 <Button
                                   type="button"
