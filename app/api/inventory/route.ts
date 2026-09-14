@@ -163,10 +163,14 @@ export async function PATCH(request: Request) {
       return Response.json({ errorCode: 'INVALID_ID' }, { status: 400 });
     if (b.action === 'display') {
       const current = await env.DB.prepare(
-        'SELECT item_type AS itemType,status FROM inventory WHERE id=? AND owner_id=?',
+        'SELECT item_type AS itemType,product_id AS productId,status FROM inventory WHERE id=? AND owner_id=?',
       )
         .bind(id, user.id)
-        .first<{ itemType: 'card' | 'sealed' | 'merch'; status: string }>();
+        .first<{
+          itemType: 'card' | 'sealed' | 'merch';
+          productId: number | null;
+          status: string;
+        }>();
       if (!current || current.status !== 'holding')
         return Response.json({ errorCode: 'NOT_FOUND' }, { status: 404 });
       const requested = textValue(b.displayLocation);
@@ -186,7 +190,7 @@ export async function PATCH(request: Request) {
       const imageUrl =
         safeImageUrl(b.imageUrl, current.itemType) ||
         (current.itemType !== 'merch'
-          ? `https://tcgplayer-cdn.tcgplayer.com/product/${Number(b.productId)}_400w.jpg`
+          ? `https://tcgplayer-cdn.tcgplayer.com/product/${current.productId}_400w.jpg`
           : null);
       const result = await env.DB.prepare(
         'UPDATE inventory SET display_location=?,image_url=COALESCE(?,image_url) WHERE id=? AND owner_id=?',
