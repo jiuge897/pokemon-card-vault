@@ -43,6 +43,13 @@
       "when": 1788552000000,
       "tag": "0005_roi_history",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1789358400000,
+      "tag": "0006_sales_leaderboard",
+      "breakpoints": true
     }
   ]
 }
