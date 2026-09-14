@@ -12,6 +12,35 @@ async function currentUser() {
 }
 const textValue = (value: unknown, fallback = '') =>
   typeof value === 'string' ? value : fallback;
+const safeImageUrl = (value: unknown, itemType: 'card' | 'sealed' | 'merch') => {
+  const raw = textValue(value).trim().slice(0, 1000);
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== 'https:') return null;
+    if (
+      itemType === 'merch' &&
+      !(
+        url.hostname === 'pokemoncenter.com' ||
+        url.hostname.endsWith('.pokemoncenter.com') ||
+        url.hostname.endsWith('.scene7.com') ||
+        url.hostname.endsWith('.pokemon.com')
+      )
+    )
+      return null;
+    if (
+      itemType !== 'merch' &&
+      !(
+        url.hostname === 'tcgplayer-cdn.tcgplayer.com' ||
+        url.hostname.endsWith('.tcgplayer.com')
+      )
+    )
+      return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+};
 export async function GET() {
   try {
     const user = await currentUser();
@@ -37,7 +66,8 @@ export async function POST(request: Request) {
     if (itemType === 'merch') {
       const sourceId = textValue(b.sourceId).trim().toUpperCase().slice(0, 40),
         sourceUrl = textValue(b.sourceUrl).trim().slice(0, 500),
-        officialPrice = Number(b.officialPrice);
+        officialPrice = Number(b.officialPrice),
+        imageUrl = safeImageUrl(b.imageUrl, 'merch');
       if (
         !/^[A-Z0-9-]{3,40}$/.test(sourceId) ||
         !name ||
@@ -58,7 +88,7 @@ export async function POST(request: Request) {
         } catch {}
       }
       await env.DB.prepare(
-        `INSERT INTO inventory(owner_id,product_id,source_id,source_url,name,item_type,printing,quantity,market_price,created_at,updated_at) VALUES(?,NULL,?,?,?,?,?,?,?,?,?) ON CONFLICT(owner_id,source_id,item_type) DO UPDATE SET source_url=excluded.source_url,name=excluded.name,quantity=inventory.quantity+excluded.quantity,market_price=excluded.market_price,updated_at=excluded.updated_at`,
+        `INSERT INTO inventory(owner_id,product_id,source_id,source_url,name,item_type,printing,quantity,market_price,image_url,created_at,updated_at) VALUES(?,NULL,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(owner_id,source_id,item_type) DO UPDATE SET source_url=excluded.source_url,name=excluded.name,quantity=inventory.quantity+excluded.quantity,market_price=excluded.market_price,image_url=COALESCE(excluded.image_url,inventory.image_url),updated_at=excluded.updated_at`,
       )
         .bind(
           user.id,
@@ -69,6 +99,7 @@ export async function POST(request: Request) {
           'Official Price',
           quantity,
           officialPrice,
+          imageUrl,
           now,
           now,
         )
@@ -99,7 +130,7 @@ export async function POST(request: Request) {
       )
         return Response.json({ errorCode: 'INCOMPLETE' }, { status: 400 });
       await env.DB.prepare(
-        `INSERT INTO inventory(owner_id,product_id,name,item_type,printing,quantity,unit_cost,taxable,tax_rate,cost_source,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(owner_id,product_id,printing) DO UPDATE SET name=excluded.name,item_type=excluded.item_type,quantity=inventory.quantity+excluded.quantity,unit_cost=COALESCE(excluded.unit_cost,inventory.unit_cost),taxable=CASE WHEN excluded.unit_cost IS NULL THEN inventory.taxable ELSE excluded.taxable END,tax_rate=CASE WHEN excluded.unit_cost IS NULL THEN inventory.tax_rate ELSE excluded.tax_rate END,cost_source=CASE WHEN excluded.unit_cost IS NULL THEN inventory.cost_source ELSE excluded.cost_source END`,
+        `INSERT INTO inventory(owner_id,product_id,name,item_type,printing,quantity,unit_cost,taxable,tax_rate,cost_source,image_url,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(owner_id,product_id,printing) DO UPDATE SET name=excluded.name,item_type=excluded.item_type,quantity=inventory.quantity+excluded.quantity,unit_cost=COALESCE(excluded.unit_cost,inventory.unit_cost),taxable=CASE WHEN excluded.unit_cost IS NULL THEN inventory.taxable ELSE excluded.taxable END,tax_rate=CASE WHEN excluded.unit_cost IS NULL THEN inventory.tax_rate ELSE excluded.tax_rate END,cost_source=CASE WHEN excluded.unit_cost IS NULL THEN inventory.cost_source ELSE excluded.cost_source END,image_url=COALESCE(inventory.image_url,excluded.image_url)`,
       )
         .bind(
           user.id,
@@ -112,6 +143,7 @@ export async function POST(request: Request) {
           taxable,
           taxRate,
           costSource,
+          `https://tcgplayer-cdn.tcgplayer.com/product/${productId}_400w.jpg`,
           now,
         )
         .run();
@@ -129,6 +161,42 @@ export async function PATCH(request: Request) {
     const id = Number(b.id);
     if (!Number.isInteger(id))
       return Response.json({ errorCode: 'INVALID_ID' }, { status: 400 });
+    if (b.action === 'display') {
+      const current = await env.DB.prepare(
+        'SELECT item_type AS itemType,status FROM inventory WHERE id=? AND owner_id=?',
+      )
+        .bind(id, user.id)
+        .first<{ itemType: 'card' | 'sealed' | 'merch'; status: string }>();
+      if (!current || current.status !== 'holding')
+        return Response.json({ errorCode: 'NOT_FOUND' }, { status: 404 });
+      const requested = textValue(b.displayLocation);
+      const displayLocation =
+        requested === 'binder' && current.itemType === 'card'
+          ? 'binder'
+          : requested === 'display' && current.itemType !== 'card'
+            ? 'display'
+            : requested === 'vault'
+              ? 'vault'
+              : null;
+      if (!displayLocation)
+        return Response.json(
+          { errorCode: 'INVALID_DISPLAY_LOCATION' },
+          { status: 400 },
+        );
+      const imageUrl =
+        safeImageUrl(b.imageUrl, current.itemType) ||
+        (current.itemType !== 'merch'
+          ? `https://tcgplayer-cdn.tcgplayer.com/product/${Number(b.productId)}_400w.jpg`
+          : null);
+      const result = await env.DB.prepare(
+        'UPDATE inventory SET display_location=?,image_url=COALESCE(?,image_url) WHERE id=? AND owner_id=?',
+      )
+        .bind(displayLocation, imageUrl, id, user.id)
+        .run();
+      if (!result.meta.changes)
+        return Response.json({ errorCode: 'NOT_FOUND' }, { status: 404 });
+      return Response.json({ items: await listInventory(user.id) });
+    }
     if (b.action === 'cost') {
       const rawCost =
           b.unitCost === '' || b.unitCost == null ? null : Number(b.unitCost),
