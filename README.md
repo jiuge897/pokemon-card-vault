@@ -2,7 +2,9 @@
 
 [English](#english) | [简体中文](#简体中文)
 
-Current release: **v1.01** · [Release notes](CHANGELOG.md)
+Current release: **v1.02** · [Release notes](CHANGELOG.md)
+
+Live Site: [Pokémon Card Vault](https://pokemon-card-vault-daily.ianghost897.chatgpt.site)
 
 ## English
 
@@ -16,7 +18,13 @@ A multilingual Pokémon TCG inventory and valuation dashboard built for ChatGPT 
 - Quantity controls, search, manual price refresh, and CSV export
 - Adjustable valuation model: cards 50%, sealed products 80%, merchandise 100%
 - Purchase cost, optional sales-tax rate, profit, and ROI calculations
-- ROI history chart starting from each item's added date
+- Sell workflow with sale price, sale date, optional notes, realized profit, and locked realized ROI
+- Holdings, sold-items, and all-items inventory filters
+- Holding return, year-to-date return, and since-inception portfolio return
+- ROI history that preserves realized performance after an item is sold
+- Post-sale market tracking for missed gains and avoided losses without altering realized ROI
+- Opt-in community leaderboards for portfolio value, return, missed gains, and best exits
+- Privacy controls for leaderboard participation, nickname, and exact portfolio value
 - “I pulled it myself” cost basis using the matching set's daily booster-pack price
 - Automatic set detection from a TCGplayer Product ID, with manual set selection as fallback
 - Pokémon Center official retail-price lookup for merchandise
@@ -73,7 +81,13 @@ The app stores inventory and ROI history in your deployed D1 database. No user d
 - 支持数量调整、库存搜索、手动更新价格和 CSV 导出
 - 按单卡 50%、密封产品 80%、周边 100% 计算折算价值
 - 支持购买成本、可选消费税率、收益和收益率计算
-- 从商品加入日期开始生成收益率历史图表
+- 支持填写售出价格、售出日期和备注，并固定记录已实现利润与已实现收益率
+- 库存可按“持仓 / 已售出 / 全部”筛选
+- 支持持仓收益率、年初至今收益率和建仓以来收益率
+- 收益率历史在商品售出后继续保留真实的已实现表现
+- 售出后继续追踪市场价，统计错失收益与避免损失，但不改变实际收益率
+- 提供资产、收益率、最大错失收益和最佳止盈排行榜
+- 排行榜默认不公开，可自行设置昵称、参与状态和是否隐藏具体资产金额
 - “我抽出来的”单卡可按所属系列的当日补充包价格计算成本
 - 可通过 TCGplayer Product ID 自动识别系列，识别失败时允许手动选择
 - 周边可查询 Pokémon Center 官网售价
@@ -114,7 +128,7 @@ npm run dev
 
 应用会把库存与收益率历史保存在你部署的 D1 数据库中，本仓库不包含任何用户数据。单卡与密封产品使用公开的 TCGplayer 市场资料；周边在可用时使用 Pokémon Center 官网售价。外部资料来源的可用性和行为可能发生变化。
 
-本项目与 Pokémon、Nintendo、Creatures、Game Freak 或 TCGplayer 不存在隶属、授权或背书关系。
+本项目与 Pokémon、Nintendo、Creatures、Game Freak、TCGplayer 或 Pokémon Center 不存在隶属、授权或背书关系。
 
 ### 开源许可证
 
