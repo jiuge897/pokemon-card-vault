@@ -2259,6 +2259,15 @@ export default function InventoryClient({
           </section>
         </section>
       </div>
+      <footer className="mx-auto mt-10 flex max-w-[1440px] flex-wrap items-center justify-between gap-2 px-5 text-xs text-slate-400 md:px-10">
+        <span>PokeVault</span>
+        <a
+          href="mailto:info@ianghost.com"
+          className="transition hover:text-slate-700"
+        >
+          info@ianghost.com
+        </a>
+      </footer>
       <Dialog
         open={Boolean(saleEditor)}
         onOpenChange={(open) => {

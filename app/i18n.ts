@@ -20,7 +20,7 @@ export const localeNames: Record<Locale, string> = {
 };
 
 const zhCN = {
-  vault: '卡册金库',
+  vault: 'PokeVault',
   subtitle: 'Pokémon 库存估值台',
   marketUsd: 'TCGplayer 市价 + Pokémon Center 官网价 · USD',
   signOut: '退出',
@@ -213,7 +213,7 @@ export const translations: Record<Locale, Dictionary> = {
   'zh-CN': zhCN,
   'zh-TW': {
     ...zhCN,
-    vault: '卡冊金庫',
+    vault: 'PokeVault',
     subtitle: 'Pokémon 庫存估值台',
     marketUsd: 'TCGplayer 市場價 · USD',
     signOut: '登出',
@@ -293,7 +293,7 @@ export const translations: Record<Locale, Dictionary> = {
   },
   en: {
     ...zhCN,
-    vault: 'Card Vault',
+    vault: 'PokeVault',
     subtitle: 'Pokémon Inventory Valuation',
     marketUsd: 'TCGplayer market · USD',
     signOut: 'Sign out',
@@ -374,7 +374,7 @@ export const translations: Record<Locale, Dictionary> = {
   },
   ja: {
     ...zhCN,
-    vault: 'カード金庫',
+    vault: 'PokeVault',
     subtitle: 'Pokémon 在庫評価',
     marketUsd: 'TCGplayer 市場価格 · USD',
     signOut: 'ログアウト',
@@ -455,7 +455,7 @@ export const translations: Record<Locale, Dictionary> = {
   },
   fr: {
     ...zhCN,
-    vault: 'Coffre à cartes',
+    vault: 'PokeVault',
     subtitle: 'Évaluation de l’inventaire Pokémon',
     marketUsd: 'Prix du marché TCGplayer · USD',
     signOut: 'Se déconnecter',
@@ -537,7 +537,7 @@ export const translations: Record<Locale, Dictionary> = {
   },
   es: {
     ...zhCN,
-    vault: 'Bóveda de cartas',
+    vault: 'PokeVault',
     subtitle: 'Valoración de inventario Pokémon',
     marketUsd: 'Precio de mercado TCGplayer · USD',
     signOut: 'Cerrar sesión',
@@ -619,7 +619,7 @@ export const translations: Record<Locale, Dictionary> = {
   },
   ar: {
     ...zhCN,
-    vault: 'خزنة البطاقات',
+    vault: 'PokeVault',
     subtitle: 'تقييم مخزون Pokémon',
     marketUsd: 'سعر سوق TCGplayer · USD',
     signOut: 'تسجيل الخروج',

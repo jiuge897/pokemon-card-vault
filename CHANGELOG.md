@@ -58,7 +58,7 @@
 
 ### 中文
 
-这是 Pokémon Card Vault 首个完整功能版本，整合了此前网站上的全部主要更新。
+这是 PokeVault 首个完整功能版本，整合了此前网站上的全部主要更新。
 
 #### 新功能
 
@@ -89,7 +89,7 @@
 
 ### English
 
-This is the first complete release of Pokémon Card Vault, consolidating all major Site updates.
+This is the first complete release of PokeVault, consolidating all major Site updates.
 
 #### Added
 

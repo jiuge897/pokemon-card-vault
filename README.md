@@ -1,10 +1,12 @@
-# Pokémon Card Vault
+# PokeVault
 
 [English](#english) | [简体中文](#简体中文)
 
 Current release: **v1.03** · [Release notes](CHANGELOG.md)
 
-Live Site: [Pokémon Card Vault](https://pokemon-card-vault-daily.ianghost897.chatgpt.site)
+Live Site: [PokeVault](https://pokevault.ianghost.com)
+
+Contact: [info@ianghost.com](mailto:info@ianghost.com)
 
 ## English
 
