@@ -4,7 +4,13 @@
 
 Current release: **v1.03** · [Release notes](CHANGELOG.md)
 
-Live Site: [PokeVault](https://pokevault.ianghost.com)
+Live Site: [PokeVault](https://vault.ianghost.com)
+
+Fallback / 备用入口: https://pokemon-card-vault-daily.ianghost897.chatgpt.site
+
+Latest deployment update: **2026-09-29 — custom domain launch**. The existing Site and database are retained; no data migration is required.
+
+最新部署更新：**2026-09-29 — 独立域名上线**。沿用现有 Site 和数据库，无需迁移数据。
 
 Contact: [info@ianghost.com](mailto:info@ianghost.com)
 
