@@ -1,5 +1,25 @@
 # Changelog / 版本更新说明
 
+## 2026-09-29 — Custom domain launch / 独立域名上线（v1.03 部署更新）
+
+### 中文
+
+- PokeVault 正式访问地址更新为 https://vault.ianghost.com。
+- 完成子域名 CNAME 连接、域名所有权验证和 HTTPS 证书验证；域名与证书状态均为 active。
+- 保留现有 Site 与数据库，本次不迁移、重建或清空用户库存及收益率历史。
+- ianghost.com 继续由 Northwest 管理，现有名称服务器、主域名网站和邮箱记录保持不变。
+- README 更新正式访问地址，并保留原有 ChatGPT Sites 地址作为备用入口。
+- 本次属于域名与部署文档更新，应用功能版本仍为 v1.03，无新增数据库迁移。
+
+### English
+
+- Updated the primary PokeVault URL to https://vault.ianghost.com.
+- Configured the subdomain CNAME, ownership validation, and HTTPS certificate validation. The domain and certificate both report active status.
+- Retained the existing Site and database; this update does not migrate, rebuild, or clear inventory or ROI history.
+- Kept ianghost.com with Northwest, retaining the existing nameservers, root-domain website, and email records.
+- Updated the README with the primary URL and retained the original ChatGPT Sites URL as a fallback.
+- This is a domain and deployment-documentation update. The application remains at v1.03, with no new database migration.
+
 ## v1.03 — 2026-09-14
 
 ### 中文
