@@ -1884,7 +1884,7 @@ export default function InventoryClient({
                     <TableHead className="min-w-40 text-end">
                       {t.profitRoi}
                     </TableHead>
-                    <TableHead className="sticky end-0 z-10 w-12 bg-[#f7f8fa]" />
+                    <TableHead className="w-12" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -2185,7 +2185,7 @@ export default function InventoryClient({
                               </div>
                             )}
                           </TableCell>
-                          <TableCell className="sticky end-0 z-10 bg-white/95 backdrop-blur-sm">
+                          <TableCell>
                             <div className="flex items-center justify-end gap-1">
                               {!isSold && (
                                 <Button
@@ -2223,6 +2223,7 @@ export default function InventoryClient({
                               {!isSold && (
                                 <Button
                                   type="button"
+                                  aria-label={tr('sellItem', { name: item.name })}
                                   title={t.sell}
                                   variant="ghost"
                                   size="icon"

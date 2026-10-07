@@ -18,11 +18,11 @@ function DialogContent({
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-slate-950/45 backdrop-blur-[2px]" />
-      <DialogPrimitive.Viewport className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto p-0 sm:items-center sm:p-4">
+      <DialogPrimitive.Viewport className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-2 sm:p-4">
         <DialogPrimitive.Popup
           data-slot="dialog-content"
           className={cn(
-            'relative grid max-h-[calc(100dvh-0.5rem)] w-full max-w-lg gap-4 overflow-y-auto rounded-t-2xl border border-slate-200 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-slate-950 shadow-2xl outline-none sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl sm:p-6',
+            'relative grid max-h-[calc(100dvh-1rem)] w-full max-w-lg gap-4 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 text-slate-950 shadow-2xl outline-none sm:max-h-[calc(100dvh-2rem)] sm:p-6',
             className,
           )}
           {...props}
