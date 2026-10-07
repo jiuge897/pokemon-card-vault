@@ -175,12 +175,17 @@ export default function InventoryClient({
     'holding' | 'ytd' | 'inception'
   >('holding');
   const [selling, setSelling] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [saleEditor, setSaleEditor] = useState<{
     id: number;
     name: string;
     soldPrice: string;
     soldAt: string;
     saleNote: string;
+  } | null>(null);
+  const [deleteEditor, setDeleteEditor] = useState<{
+    id: number;
+    name: string;
   } | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [leaderboardProfile, setLeaderboardProfile] = useState({
@@ -539,12 +544,23 @@ export default function InventoryClient({
       setAdding(false);
     }
   }
-  async function removeItem(id: number) {
-    const r = await fetch(`/api/inventory?id=${id}`, { method: 'DELETE' });
-    if (r.ok) {
-      setItems((c) => c.filter((i) => i.id !== id));
+  async function removeItem() {
+    if (!deleteEditor) return;
+    setDeleting(true);
+    setMessage('');
+    try {
+      const r = await fetch(`/api/inventory?id=${deleteEditor.id}`, {
+        method: 'DELETE',
+      });
+      if (!r.ok) throw new Error(t.notFound);
+      setItems((c) => c.filter((i) => i.id !== deleteEditor.id));
+      setDeleteEditor(null);
       await loadRoiHistory();
-    } else setMessage(t.notFound);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : t.notFound);
+    } finally {
+      setDeleting(false);
+    }
   }
   async function saveSale() {
     if (!saleEditor) return;
@@ -1868,7 +1884,7 @@ export default function InventoryClient({
                     <TableHead className="min-w-40 text-end">
                       {t.profitRoi}
                     </TableHead>
-                    <TableHead className="w-12" />
+                    <TableHead className="sticky end-0 z-10 w-12 bg-[#f7f8fa]" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -2169,7 +2185,7 @@ export default function InventoryClient({
                               </div>
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="sticky end-0 z-10 bg-white/95 backdrop-blur-sm">
                             <div className="flex items-center justify-end gap-1">
                               {!isSold && (
                                 <Button
@@ -2210,7 +2226,7 @@ export default function InventoryClient({
                                   title={t.sell}
                                   variant="ghost"
                                   size="icon"
-                                  className="text-slate-400 opacity-0 group-hover:opacity-100 hover:text-emerald-600 focus:opacity-100"
+                                  className="text-slate-400 opacity-100 hover:text-emerald-600 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
                                   onClick={() =>
                                     setSaleEditor({
                                       id: item.id,
@@ -2232,8 +2248,10 @@ export default function InventoryClient({
                               title={t.deleteTitle}
                               variant="ghost"
                               size="icon"
-                              className="text-slate-300 opacity-0 group-hover:opacity-100 hover:text-red-500 focus:opacity-100"
-                              onClick={() => removeItem(item.id)}
+                              className="text-slate-400 opacity-100 hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
+                              onClick={() =>
+                                setDeleteEditor({ id: item.id, name: item.name })
+                              }
                             >
                               <Trash2 />
                             </Button>
@@ -2339,6 +2357,40 @@ export default function InventoryClient({
             <Button disabled={selling} onClick={saveSale}>
               {selling && <LoaderCircle className="animate-spin" />}
               {t.confirmSale}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={Boolean(deleteEditor)}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setDeleteEditor(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t.deleteTitle}</DialogTitle>
+            <DialogDescription>
+              {deleteEditor
+                ? tr('deleteItem', { name: deleteEditor.name })
+                : t.deleteTitle}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={deleting}
+              onClick={() => setDeleteEditor(null)}
+            >
+              {t.cancel}
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleting}
+              onClick={removeItem}
+            >
+              {deleting && <LoaderCircle className="animate-spin" />}
+              {t.deleteTitle}
             </Button>
           </DialogFooter>
         </DialogContent>
