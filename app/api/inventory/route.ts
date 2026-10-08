@@ -234,7 +234,7 @@ export async function PATCH(request: Request) {
         !Number.isFinite(soldPrice) ||
         soldPrice < 0 ||
         soldPrice > 10000000 ||
-        !/^\\d{4}-\\d{2}-\\d{2}$/.test(soldAt)
+        !/^\d{4}-\d{2}-\d{2}$/.test(soldAt)
       )
         return Response.json({ errorCode: 'INVALID_SALE' }, { status: 400 });
       const result = await env.DB.prepare(
