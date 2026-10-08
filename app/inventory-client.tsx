@@ -175,6 +175,7 @@ export default function InventoryClient({
     'holding' | 'ytd' | 'inception'
   >('holding');
   const [selling, setSelling] = useState(false);
+  const [saleError, setSaleError] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [saleEditor, setSaleEditor] = useState<{
     id: number;
@@ -566,10 +567,12 @@ export default function InventoryClient({
     if (!saleEditor) return;
     const soldPrice = Number(saleEditor.soldPrice);
     if (!Number.isFinite(soldPrice) || soldPrice < 0 || !saleEditor.soldAt) {
+      setSaleError(t.invalidSale);
       setMessage(t.invalidSale);
       return;
     }
     setSelling(true);
+    setSaleError('');
     setMessage('');
     try {
       const response = await fetch('/api/inventory', {
@@ -577,14 +580,17 @@ export default function InventoryClient({
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ action: 'sell', ...saleEditor, soldPrice }),
       });
-      const data = (await response.json()) as ApiData;
+      const data = (await response.json().catch(() => ({}))) as ApiData;
       if (!response.ok) throw new Error(apiError(data, 'saleFailed'));
       if (data.items) setItems(data.items);
       setSaleEditor(null);
       setMessage(t.saleSaved);
       await Promise.all([loadRoiHistory(), loadLeaderboard()]);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t.saleFailed);
+      const errorMessage =
+        error instanceof Error ? error.message : t.saleFailed;
+      setSaleError(errorMessage);
+      setMessage(errorMessage);
     } finally {
       setSelling(false);
     }
@@ -2228,7 +2234,8 @@ export default function InventoryClient({
                                   variant="ghost"
                                   size="icon"
                                   className="text-slate-400 opacity-100 hover:text-emerald-600 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
-                                  onClick={() =>
+                                  onClick={() => {
+                                    setSaleError('');
                                     setSaleEditor({
                                       id: item.id,
                                       name: item.name,
@@ -2237,8 +2244,8 @@ export default function InventoryClient({
                                         .toISOString()
                                         .slice(0, 10),
                                       saleNote: '',
-                                    })
-                                  }
+                                    });
+                                  }}
                                 >
                                   <TrendingUp />
                                 </Button>
@@ -2303,63 +2310,86 @@ export default function InventoryClient({
             <DialogDescription>{t.sellHint}</DialogDescription>
           </DialogHeader>
           {saleEditor && (
-            <div className="grid gap-4 py-2">
-              <label className="field-label">
-                {t.sellPrice}
-                <Input
-                  dir="ltr"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className="field-input"
-                  value={saleEditor.soldPrice}
-                  onChange={(event) =>
-                    setSaleEditor({
-                      ...saleEditor,
-                      soldPrice: event.target.value,
-                    })
-                  }
-                />
-              </label>
-              <label className="field-label">
-                {t.sellDate}
-                <Input
-                  dir="ltr"
-                  type="date"
-                  className="field-input"
-                  value={saleEditor.soldAt}
-                  onChange={(event) =>
-                    setSaleEditor({
-                      ...saleEditor,
-                      soldAt: event.target.value,
-                    })
-                  }
-                />
-              </label>
-              <label className="field-label">
-                {t.saleNote}
-                <Input
-                  value={saleEditor.saleNote}
-                  className="field-input"
-                  onChange={(event) =>
-                    setSaleEditor({
-                      ...saleEditor,
-                      saleNote: event.target.value,
-                    })
-                  }
-                />
-              </label>
-            </div>
+            <form
+              className="grid gap-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void saveSale();
+              }}
+            >
+              <div className="grid gap-4 py-2">
+                <label className="field-label">
+                  {t.sellPrice}
+                  <Input
+                    dir="ltr"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="field-input"
+                    value={saleEditor.soldPrice}
+                    onChange={(event) =>
+                      setSaleEditor({
+                        ...saleEditor,
+                        soldPrice: event.target.value,
+                      })
+                    }
+                  />
+                </label>
+                <label className="field-label">
+                  {t.sellDate}
+                  <Input
+                    dir="ltr"
+                    type="date"
+                    className="field-input"
+                    value={saleEditor.soldAt}
+                    onChange={(event) =>
+                      setSaleEditor({
+                        ...saleEditor,
+                        soldAt: event.target.value,
+                      })
+                    }
+                  />
+                </label>
+                <label className="field-label">
+                  {t.saleNote}
+                  <Input
+                    value={saleEditor.saleNote}
+                    className="field-input"
+                    enterKeyHint="done"
+                    onChange={(event) =>
+                      setSaleEditor({
+                        ...saleEditor,
+                        saleNote: event.target.value,
+                      })
+                    }
+                  />
+                </label>
+              </div>
+              {saleError && (
+                <p
+                  role="alert"
+                  aria-live="polite"
+                  className="rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-700"
+                >
+                  {saleError}
+                </p>
+              )}
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={selling}
+                  onClick={() => setSaleEditor(null)}
+                >
+                  {t.cancel}
+                </Button>
+                <Button type="submit" disabled={selling}>
+                  {selling && <LoaderCircle className="animate-spin" />}
+                  {t.confirmSale}
+                </Button>
+              </DialogFooter>
+            </form>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSaleEditor(null)}>
-              {t.cancel}
-            </Button>
-            <Button disabled={selling} onClick={saveSale}>
-              {selling && <LoaderCircle className="animate-spin" />}
-              {t.confirmSale}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
       <Dialog
